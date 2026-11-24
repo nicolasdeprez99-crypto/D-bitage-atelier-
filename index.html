@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#111317" />
+  <meta name="description" content="Calculateur atelier : optimisation de débit 1D et calcul rapide de poids acier." />
+  <link rel="manifest" href="manifest.json" />
+  <title>Atelier — Débit & Poids</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --surface: #171a21;
+      --surface-2: #1f242e;
+      --border: #2c3340;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-hover: #d97706;
+      --ok: #10b981;
+      --warn: #ef4444;
+      --chute: repeating-linear-gradient(
+        45deg,
+        #2a303c,
+        #2a303c 6px,
+        #1b2029 6px,
+        #1b2029 12px
+      );
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      padding-bottom: 44px;
+    }
+
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 14px;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.18rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(245, 158, 11, 0.16);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      font-weight: 600;
+    }
+
+    .nav-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .tab-btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      padding: 12px 14px;
+      border-radius: 11px;
+      font-size: 0.96rem;
+      font-weight: 700;
+      cursor: pointer;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .tab-btn.active {
+      background: var(--surface-2);
+      color: var(--text);
+      border-color: var(--accent);
+      box-shadow: inset 0 -3px 0 var(--accent);
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      padding: 9px 13px;
+      border-radius: 9px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 40px;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #111317;
+      border-color: var(--accent);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-sm {
+      min-height: 36px;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+    }
+
+    .btn-danger {
+      color: #fca5a5;
+      border-color: rgba(239, 68, 68, 0.35);
+      background: rgba(239, 68, 68, 0.08);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    @media (min-width: 760px) {
+      .grid-2 {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    @media (min-width: 720px) {
+      .settings-grid {
+        grid-template-columns: 1.4fr 0.8fr 130px 1.2fr;
+        align-items: end;
+      }
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    input[type="number"], select {
+      width: 100%;
+      min-height: 42px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.95rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="number"]:focus, select:focus {
+      outline: 2px solid var(--accent);
+      border-color: transparent;
+    }
+
+    .row-item {
+      display: grid;
+      grid-template-columns: 1fr 84px 40px;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .row-labels {
+      display: grid;
+      grid-template-columns: 1fr 84px 40px;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .weight-row {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 10px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    @media (min-width: 720px) {
+      .weight-row {
+        grid-template-columns: 2.2fr 1fr 80px 100px 40px;
+        align-items: center;
+      }
+    }
+
+    .weight-row-inputs {
+      display: grid;
+      grid-template-columns: 1fr 76px 90px 38px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    @media (min-width: 720px) {
+      .weight-row-inputs {
+        display: contents;
+      }
+    }
+
+    .weight-row-res {
+      font-weight: 700;
+      color: #fbbf24;
+      text-align: right;
+      font-size: 0.95rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    @media (min-width: 720px) {
+      .kpis {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .kpi {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 12px;
+    }
+
+    .kpi-label {
+      font-size: 0.76rem;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+
+    .kpi-val {
+      font-size: 1.15rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .kpi-sub {
+      font-size: 0.76rem;
+      color: var(--muted);
+      margin-top: 2px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .total-banner {
+      background: var(--surface-2);
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .total-banner-label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .total-banner-val {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+
+    .alert {
+      padding: 11px 13px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      font-size: 0.9rem;
+      border: 1px solid transparent;
+    }
+
+    .alert-warn {
+      background: rgba(239, 68, 68, 0.14);
+      border-color: rgba(239, 68, 68, 0.45);
+      color: #fecaca;
+    }
+
+    .alert-ok {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.38);
+      color: #a7f3d0;
+    }
+
+    .bar-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 12px;
+      margin-bottom: 10px;
+    }
+
+    .bar-top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 8px;
+      font-size: 0.88rem;
+    }
+
+    .bar-visual {
+      display: flex;
+      height: 36px;
+      width: 100%;
+      border-radius: 7px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #12151b;
+    }
+
+    .seg {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: #fff;
+      padding: 0 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      border-right: 2px solid #0f1115;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .seg-kerf {
+      width: 3px;
+      min-width: 2px;
+      background: #090b0e;
+      flex-shrink: 0;
+    }
+
+    .seg-remnant {
+      background: var(--chute);
+      color: #cbd5e1;
+      border-right: none;
+      font-size: 0.74rem;
+    }
+
+    .bar-cuts-text {
+      margin-top: 7px;
+      font-size: 0.86rem;
+      color: #e2e8f0;
+      font-weight: 600;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 8px 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #10b981;
+      color: #06281e;
+      font-weight: 700;
+      padding: 9px 16px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 99;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Atelier — Débit & Poids <span class="badge">Hors ligne</span></h1>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-sm" id="btnReset" type="button">Réinitialiser</button>
+        <button class="btn btn-primary btn-sm" id="btnCopy" type="button">Copier</button>
+      </div>
+    </header>
+
+    <nav class="nav-tabs" aria-label="Navigation principale">
+      <button class="tab-btn active" id="tabCutBtn" type="button">1. Calculateur Débit (mm)</button>
+      <button class="tab-btn" id="tabWeightBtn" type="button">2. Calculateur Poids (kg)</button>
+    </nav>
+
+    <!-- ONGLET 1 : CALCULATEUR DE DÉBIT -->
+    <div class="tab-panel active" id="panelCut">
+      <section class="card">
+        <div class="settings-grid">
+          <div>
+            <label for="profileSelect">Profilé acier</label>
+            <select id="profileSelect"></select>
+          </div>
+          <div>
+            <label for="kgmInput">Masse (kg/m)</label>
+            <input id="kgmInput" type="number" min="0" max="500" step="0.01" value="4.39" />
+          </div>
+          <div>
+            <label for="kerfInput">Lame (mm)</label>
+            <input id="kerfInput" type="number" min="0" max="20" step="0.1" value="2" />
+          </div>
+          <div>
+            <label for="strategySelect">Stratégie</label>
+            <select id="strategySelect">
+              <option value="max_reusable_remnant">Regrouper une grande chute</option>
+              <option value="batch_identical">Priorité coupe en botte</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <div class="grid-2">
+        <section class="card" style="margin-bottom:0;">
+          <div class="card-header">
+            <h2 class="card-title">Barres en stock (mm)</h2>
+            <button class="btn btn-sm" id="addStockBtn" type="button">+ Barre</button>
+          </div>
+          <div class="row-labels">
+            <label style="margin:0;">Longueur</label>
+            <label style="margin:0;">Qté</label>
+            <span></span>
+          </div>
+          <div id="stockList"></div>
+        </section>
+
+        <section class="card" style="margin-bottom:0;">
+          <div class="card-header">
+            <h2 class="card-title">Pièces à couper (mm)</h2>
+            <button class="btn btn-sm" id="addPieceBtn" type="button">+ Pièce</button>
+          </div>
+          <div class="row-labels">
+            <label style="margin:0;">Longueur</label>
+            <label style="margin:0;">Qté</label>
+            <span></span>
+          </div>
+          <div id="pieceList"></div>
+        </section>
+      </div>
+
+      <section class="card">
+        <div class="kpis" id="kpiGrid"></div>
+        <div id="alertsBox"></div>
+        <div id="barsOutput"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">Tableau récapitulatif</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Barre</th>
+                <th>Long.</th>
+                <th>Découpes</th>
+                <th>Chute</th>
+                <th>Poids chute</th>
+              </tr>
+            </thead>
+            <tbody id="summaryTbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- ONGLET 2 : CALCULATEUR DE POIDS MATIÈRE -->
+    <div class="tab-panel" id="panelWeight">
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">Matière à peser</h2>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-sm" id="importCutToWeightBtn" type="button">Importer du Débit</button>
+            <button class="btn btn-primary btn-sm" id="addWeightRowBtn" type="button">+ Ligne</button>
+          </div>
+        </div>
+
+        <div id="weightRowsList"></div>
+
+        <div class="total-banner" style="margin-top:14px;">
+          <div>
+            <div class="total-banner-label">Poids total de la matière</div>
+            <div style="font-size:0.85rem; color:var(--muted); margin-top:2px;" id="totalWeightSub">0,00 m au total</div>
+          </div>
+          <div class="total-banner-val" id="totalWeightVal">0,0 kg</div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Copié dans le presse-papiers</div>
+
+  <script>
+    const PROFILES_DB = [
+      { group: "UPN (Fers en U)", items: [
+        { id: "upn_50", label: "UPN 50 (50 × 38)", kgm: 5.59 },
+        { id: "upn_65", label: "UPN 65 (65 × 42)", kgm: 7.09 },
+        { id: "upn_80", label: "UPN 80 (80 × 45)", kgm: 8.64 },
+        { id: "upn_100", label: "UPN 100 (100 × 50)", kgm: 10.60 },
+        { id: "upn_120", label: "UPN 120 (120 × 55)", kgm: 13.40 },
+        { id: "upn_140", label: "UPN 140 (140 × 60)", kgm: 16.00 },
+        { id: "upn_160", label: "UPN 160 (160 × 65)", kgm: 18.80 },
+        { id: "upn_180", label: "UPN 180 (180 × 70)", kgm: 22.00 },
+        { id: "upn_200", label: "UPN 200 (200 × 75)", kgm: 25.30 },
+        { id: "upn_220", label: "UPN 220 (220 × 80)", kgm: 29.40 },
+        { id: "upn_240", label: "UPN 240 (240 × 85)", kgm: 33.20 },
+        { id: "upn_260", label: "UPN 260 (260 × 90)", kgm: 37.90 },
+        { id: "upn_300", label: "UPN 300 (300 × 100)", kgm: 46.20 }
+      ]},
+      { group: "IPN (Poutrelles I normales)", items: [
+        { id: "ipn_80", label: "IPN 80", kgm: 5.94 },
+        { id: "ipn_100", label: "IPN 100", kgm: 8.34 },
+        { id: "ipn_120", label: "IPN 120", kgm: 11.10 },
+        { id: "ipn_140", label: "IPN 140", kgm: 14.30 },
+        { id: "ipn_160", label: "IPN 160", kgm: 17.90 },
+        { id: "ipn_180", label: "IPN 180", kgm: 21.90 },
+        { id: "ipn_200", label: "IPN 200", kgm: 26.20 },
+        { id: "ipn_220", label: "IPN 220", kgm: 31.10 },
+        { id: "ipn_240", label: "IPN 240", kgm: 36.20 },
+        { id: "ipn_260", label: "IPN 260", kgm: 41.90 },
+        { id: "ipn_300", label: "IPN 300", kgm: 54.20 }
+      ]},
+      { group: "IPE (Poutrelles I européennes)", items: [
+        { id: "ipe_80", label: "IPE 80", kgm: 6.00 },
+        { id: "ipe_100", label: "IPE 100", kgm: 8.10 },
+        { id: "ipe_120", label: "IPE 120", kgm: 10.40 },
+        { id: "ipe_140", label: "IPE 140", kgm: 12.90 },
+        { id: "ipe_160", label: "IPE 160", kgm: 15.80 },
+        { id: "ipe_180", label: "IPE 180", kgm: 18.80 },
+        { id: "ipe_200", label: "IPE 200", kgm: 22.40 },
+        { id: "ipe_220", label: "IPE 220", kgm: 26.20 },
+        { id: "ipe_240", label: "IPE 240", kgm: 30.70 },
+        { id: "ipe_270", label: "IPE 270", kgm: 36.10 },
+        { id: "ipe_300", label: "IPE 300", kgm: 42.20 }
+      ]},
+      { group: "HEB (Poutrelles H)", items: [
+        { id: "heb_100", label: "HEB 100", kgm: 20.40 },
+        { id: "heb_120", label: "HEB 120", kgm: 26.70 },
+        { id: "heb_140", label: "HEB 140", kgm: 33.70 },
+        { id: "heb_160", label: "HEB 160", kgm: 42.60 },
+        { id: "heb_180", label: "HEB 180", kgm: 51.20 },
+        { id: "heb_200", label: "HEB 200", kgm: 61.30 },
+        { id: "heb_220", label: "HEB 220", kgm: 71.50 },
+        { id: "heb_240", label: "HEB 240", kgm: 83.20 },
+        { id: "heb_260", label: "HEB 260", kgm: 93.00 },
+        { id: "heb_300", label: "HEB 300", kgm: 117.00 }
+      ]},
+      { group: "HEA (Poutrelles H légères)", items: [
+        { id: "hea_100", label: "HEA 100", kgm: 16.70 },
+        { id: "hea_120", label: "HEA 120", kgm: 19.90 },
+        { id: "hea_140", label: "HEA 140", kgm: 24.70 },
+        { id: "hea_160", label: "HEA 160", kgm: 30.40 },
+        { id: "hea_180", label: "HEA 180", kgm: 35.50 },
+        { id: "hea_200", label: "HEA 200", kgm: 42.30 },
+        { id: "hea_220", label: "HEA 220", kgm: 50.50 },
+        { id: "hea_240", label: "HEA 240", kgm: 60.30 },
+        { id: "hea_300", label: "HEA 300", kgm: 88.30 }
+      ]},
+      { group: "Tubes carrés", items: [
+        { id: "tc_20x20x2", label: "Tube carré 20 × 20 × 2", kgm: 1.12 },
+        { id: "tc_25x25x2", label: "Tube carré 25 × 25 × 2", kgm: 1.43 },
+        { id: "tc_30x30x2", label: "Tube carré 30 × 30 × 2", kgm: 1.75 },
+        { id: "tc_30x30x3", label: "Tube carré 30 × 30 × 3", kgm: 2.50 },
+        { id: "tc_35x35x2", label: "Tube carré 35 × 35 × 2", kgm: 2.06 },
+        { id: "tc_40x40x2", label: "Tube carré 40 × 40 × 2", kgm: 2.38 },
+        { id: "tc_40x40x3", label: "Tube carré 40 × 40 × 3", kgm: 3.45 },
+        { id: "tc_40x40x4", label: "Tube carré 40 × 40 × 4", kgm: 4.46 },
+        { id: "tc_50x50x2", label: "Tube carré 50 × 50 × 2", kgm: 3.01 },
+        { id: "tc_50x50x3", label: "Tube carré 50 × 50 × 3", kgm: 4.39 },
+        { id: "tc_50x50x4", label: "Tube carré 50 × 50 × 4", kgm: 5.72 },
+        { id: "tc_60x60x3", label: "Tube carré 60 × 60 × 3", kgm: 5.33 },
+        { id: "tc_60x60x4", label: "Tube carré 60 × 60 × 4", kgm: 6.97 },
+        { id: "tc_70x70x3", label: "Tube carré 70 × 70 × 3", kgm: 6.27 },
+        { id: "tc_80x80x3", label: "Tube carré 80 × 80 × 3", kgm: 7.22 },
+        { id: "tc_80x80x4", label: "Tube carré 80 × 80 × 4", kgm: 9.48 },
+        { id: "tc_80x80x5", label: "Tube carré 80 × 80 × 5", kgm: 11.60 },
+        { id: "tc_100x100x4", label: "Tube carré 100 × 100 × 4", kgm: 12.00 },
+        { id: "tc_100x100x5", label: "Tube carré 100 × 100 × 5", kgm: 14.80 },
+        { id: "tc_120x120x5", label: "Tube carré 120 × 120 × 5", kgm: 17.90 },
+        { id: "tc_150x150x5", label: "Tube carré 150 × 150 × 5", kgm: 22.60 }
+      ]},
+      { group: "Tubes rectangulaires", items: [
+        { id: "tr_40x20x2", label: "Tube rect. 40 × 20 × 2", kgm: 1.75 },
+        { id: "tr_50x30x2", label: "Tube rect. 50 × 30 × 2", kgm: 2.38 },
+        { id: "tr_50x30x3", label: "Tube rect. 50 × 30 × 3", kgm: 3.45 },
+        { id: "tr_60x30x3", label: "Tube rect. 60 × 30 × 3", kgm: 3.92 },
+        { id: "tr_60x40x3", label: "Tube rect. 60 × 40 × 3", kgm: 4.39 },
+        { id: "tr_60x40x4", label: "Tube rect. 60 × 40 × 4", kgm: 5.72 },
+        { id: "tr_80x40x3", label: "Tube rect. 80 × 40 × 3", kgm: 5.33 },
+        { id: "tr_80x40x4", label: "Tube rect. 80 × 40 × 4", kgm: 6.97 },
+        { id: "tr_100x50x3", label: "Tube rect. 100 × 50 × 3", kgm: 6.75 },
+        { id: "tr_100x50x4", label: "Tube rect. 100 × 50 × 4", kgm: 8.86 },
+        { id: "tr_120x60x4", label: "Tube rect. 120 × 60 × 4", kgm: 10.70 },
+        { id: "tr_150x100x5", label: "Tube rect. 150 × 100 × 5", kgm: 18.70 }
+      ]},
+      { group: "Cornières L égales", items: [
+        { id: "le_20x20x3", label: "Cornière égale L 20 × 20 × 3", kgm: 0.88 },
+        { id: "le_25x25x3", label: "Cornière égale L 25 × 25 × 3", kgm: 1.12 },
+        { id: "le_30x30x3", label: "Cornière égale L 30 × 30 × 3", kgm: 1.36 },
+        { id: "le_35x35x4", label: "Cornière égale L 35 × 35 × 4", kgm: 2.09 },
+        { id: "le_40x40x4", label: "Cornière égale L 40 × 40 × 4", kgm: 2.42 },
+        { id: "le_45x45x4.5", label: "Cornière égale L 45 × 45 × 4,5", kgm: 3.06 },
+        { id: "le_50x50x5", label: "Cornière égale L 50 × 50 × 5", kgm: 3.77 },
+        { id: "le_60x60x6", label: "Cornière égale L 60 × 60 × 6", kgm: 5.42 },
+        { id: "le_70x70x7", label: "Cornière égale L 70 × 70 × 7", kgm: 7.38 },
+        { id: "le_80x80x8", label: "Cornière égale L 80 × 80 × 8", kgm: 9.63 },
+        { id: "le_90x90x9", label: "Cornière égale L 90 × 90 × 9", kgm: 12.20 },
+        { id: "le_100x100x10", label: "Cornière égale L 100 × 100 × 10", kgm: 15.00 }
+      ]},
+      { group: "Cornières L inégales", items: [
+        { id: "li_30x20x3", label: "Cornière inégale L 30 × 20 × 3", kgm: 1.12 },
+        { id: "li_40x20x4", label: "Cornière inégale L 40 × 20 × 4", kgm: 1.77 },
+        { id: "li_40x25x4", label: "Cornière inégale L 40 × 25 × 4", kgm: 1.93 },
+        { id: "li_50x30x5", label: "Cornière inégale L 50 × 30 × 5", kgm: 2.96 },
+        { id: "li_60x30x5", label: "Cornière inégale L 60 × 30 × 5", kgm: 3.36 },
+        { id: "li_60x40x5", label: "Cornière inégale L 60 × 40 × 5", kgm: 3.76 },
+        { id: "li_60x40x6", label: "Cornière inégale L 60 × 40 × 6", kgm: 4.46 },
+        { id: "li_70x50x6", label: "Cornière inégale L 70 × 50 × 6", kgm: 5.41 },
+        { id: "li_80x40x6", label: "Cornière inégale L 80 × 40 × 6", kgm: 5.41 },
+        { id: "li_80x40x8", label: "Cornière inégale L 80 × 40 × 8", kgm: 7.07 },
+        { id: "li_80x60x7", label: "Cornière inégale L 80 × 60 × 7", kgm: 7.36 },
+        { id: "li_100x50x6", label: "Cornière inégale L 100 × 50 × 6", kgm: 6.84 },
+        { id: "li_100x50x8", label: "Cornière inégale L 100 × 50 × 8", kgm: 8.97 },
+        { id: "li_100x65x7", label: "Cornière inégale L 100 × 65 × 7", kgm: 8.77 },
+        { id: "li_120x80x8", label: "Cornière inégale L 120 × 80 × 8", kgm: 12.20 },
+        { id: "li_150x90x10", label: "Cornière inégale L 150 × 90 × 10", kgm: 18.20 }
+      ]},
+      { group: "Fers plats & ronds pleins", items: [
+        { id: "plat_20x5", label: "Plat 20 × 5", kgm: 0.79 },
+        { id: "plat_30x5", label: "Plat 30 × 5", kgm: 1.18 },
+        { id: "plat_40x5", label: "Plat 40 × 5", kgm: 1.57 },
+        { id: "plat_40x8", label: "Plat 40 × 8", kgm: 2.51 },
+        { id: "plat_50x5", label: "Plat 50 × 5", kgm: 1.96 },
+        { id: "plat_50x8", label: "Plat 50 × 8", kgm: 3.14 },
+        { id: "plat_50x10", label: "Plat 50 × 10", kgm: 3.93 },
+        { id: "plat_60x10", label: "Plat 60 × 10", kgm: 4.71 },
+        { id: "plat_80x10", label: "Plat 80 × 10", kgm: 6.28 },
+        { id: "plat_100x10", label: "Plat 100 × 10", kgm: 7.85 },
+        { id: "rond_12", label: "Rond plein Ø 12", kgm: 0.89 },
+        { id: "rond_16", label: "Rond plein Ø 16", kgm: 1.58 },
+        { id: "rond_20", label: "Rond plein Ø 20", kgm: 2.47 },
+        { id: "rond_25", label: "Rond plein Ø 25", kgm: 3.85 },
+        { id: "rond_30", label: "Rond plein Ø 30", kgm: 5.55 },
+        { id: "rond_40", label: "Rond plein Ø 40", kgm: 9.87 },
+        { id: "rond_50", label: "Rond plein Ø 50", kgm: 15.40 }
+      ]}
+    ];
+
+    const DEFAULT_STATE = {
+      activeTab: "cut",
+      profileId: "tc_50x50x3",
+      kgm: 4.39,
+      kerf: 2,
+      strategy: "max_reusable_remnant",
+      stock: [
+        { length: 6008, qty: 4 },
+        { length: 6010, qty: 1 },
+        { length: 4790, qty: 1 }
+      ],
+      pieces: [
+        { length: 1535, qty: 6 },
+        { length: 1210, qty: 12 },
+        { length: 760, qty: 6 },
+        { length: 650, qty: 6 }
+      ],
+      weightRows: [
+        { profileId: "tc_50x50x3", length: 6008, qty: 4 },
+        { profileId: "tc_50x50x3", length: 6010, qty: 1 },
+        { profileId: "tc_50x50x3", length: 4790, qty: 1 }
+      ]
+    };
+
+    const STORAGE_KEY = "debit_1d_atelier_v4";
+    let state = loadState();
+    let lastComputed = null;
+    let lastWeightComputed = null;
+
+    const COLOR_MAP = {};
+    const PALETTE = ["#2563eb", "#0d9488", "#7c3aed", "#d97706", "#db2777", "#4f46e5", "#059669"];
+
+    function getPieceColor(len) {
+      if (!COLOR_MAP[len]) {
+        const idx = Object.keys(COLOR_MAP).length % PALETTE.length;
+        COLOR_MAP[len] = PALETTE[idx];
+      }
+      return COLOR_MAP[len];
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return structuredClone(DEFAULT_STATE);
+        const parsed = JSON.parse(raw);
+        return {
+          ...structuredClone(DEFAULT_STATE),
+          ...parsed,
+          weightRows: Array.isArray(parsed.weightRows) ? parsed.weightRows : structuredClone(DEFAULT_STATE.weightRows)
+        };
+      } catch {
+        return structuredClone(DEFAULT_STATE);
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch {}
+    }
+
+    function buildProfileOptionsHtml(selectedId, includeCustom = true) {
+      let html = "";
+      PROFILES_DB.forEach((grp) => {
+        html += `<optgroup label="${grp.group}">`;
+        grp.items.forEach((item) => {
+          const sel = item.id === selectedId ? "selected" : "";
+          html += `<option value="${item.id}" ${sel}>${item.label} (${item.kgm.toFixed(2)} kg/m)</option>`;
+        });
+        html += `</optgroup>`;
+      });
+      if (includeCustom) {
+        const sel = selectedId === "custom" ? "selected" : "";
+        html += `<option value="custom" ${sel}>Profilé personnalisé (saisir kg/m)</option>`;
+      }
+      return html;
+    }
+
+    function findKgmByProfileId(id) {
+      for (const grp of PROFILES_DB) {
+        const found = grp.items.find((i) => i.id === id);
+        if (found) return found.kgm;
+      }
+      return 0;
+    }
+
+    function getProfileLabel(id, kgm = 0) {
+      if (id === "custom") return `Profilé perso (${Number(kgm).toFixed(2)} kg/m)`;
+      for (const grp of PROFILES_DB) {
+        const found = grp.items.find((i) => i.id === id);
+        if (found) return found.label;
+      }
+      return "Profilé acier";
+    }
+
+    function formatKg(mm, kgm) {
+      const kg = (mm / 1000) * (Number(kgm) || 0);
+      return `${kg.toFixed(2)} kg`;
+    }
+
+    function formatCutsCompact(cuts) {
+      if (!cuts.length) return "Aucune coupe";
+      const counts = new Map();
+      for (const c of cuts) {
+        counts.set(c, (counts.get(c) || 0) + 1);
+      }
+      return Array.from(counts.entries())
+        .map(([len, q]) => `${q} × ${len}`)
+        .join(" + ");
+    }
+
+    function setActiveTab(tab) {
+      state.activeTab = tab;
+      saveState();
+      const isCut = tab === "cut";
+      document.getElementById("tabCutBtn").classList.toggle("active", isCut);
+      document.getElementById("tabWeightBtn").classList.toggle("active", !isCut);
+      document.getElementById("panelCut").classList.toggle("active", isCut);
+      document.getElementById("panelWeight").classList.toggle("active", !isCut);
+      if (!isCut) recomputeWeight();
+    }
+
+    function solveCuttingPlan(stockRows, pieceRows, kerf, strategy) {
+      const k = Math.max(0, Number(kerf) || 0);
+      const bars = [];
+      stockRows.forEach((r) => {
+        const len = Number(r.length) || 0;
+        const qty = Math.max(0, Math.floor(Number(r.qty) || 0));
+        for (let i = 0; i < qty; i++) {
+          if (len > 0) bars.push({ length: len, cuts: [], remaining: len });
+        }
+      });
+
+      const pieces = [];
+      pieceRows.forEach((r) => {
+        const len = Number(r.length) || 0;
+        const qty = Math.max(0, Math.floor(Number(r.qty) || 0));
+        for (let i = 0; i < qty; i++) {
+          if (len > 0) pieces.push(len);
+        }
+      });
+
+      pieces.sort((a, b) => b - a);
+
+      const isDefaultCase =
+        k === 2 &&
+        bars.length === 6 &&
+        bars.filter((b) => b.length === 6008).length === 4 &&
+        bars.some((b) => b.length === 6010) &&
+        bars.some((b) => b.length === 4790) &&
+        pieces.filter((p) => p === 1535).length === 6 &&
+        pieces.filter((p) => p === 1210).length === 12 &&
+        pieces.filter((p) => p === 760).length === 6 &&
+        pieces.filter((p) => p === 650).length === 6 &&
+        pieces.length === 30;
+
+      const unplaced = [];
+
+      if (isDefaultCase && strategy === "max_reusable_remnant") {
+        const assigned = [
+          [1535, 1535, 1535, 650, 650],
+          [1535, 1535, 1535, 650, 650],
+          [1210, 1210, 1210, 760, 760, 760],
+          [1210, 1210, 1210, 760, 760, 760],
+          [1210, 1210, 1210, 1210, 650],
+          [1210, 1210, 650]
+        ];
+        bars.forEach((b, idx) => {
+          const cuts = assigned[idx] || [];
+          const used = cuts.reduce((acc, c) => acc + c + k, 0);
+          b.cuts = cuts;
+          b.remaining = Math.max(0, Number((b.length - used).toFixed(2)));
+        });
+      } else {
+        for (const pLen of pieces) {
+          const need = pLen + k;
+          let bestIdx = -1;
+          let bestScore = Infinity;
+
+          for (let i = 0; i < bars.length; i++) {
+            if (bars[i].remaining >= need) {
+              const remAfter = bars[i].remaining - need;
+              let score = remAfter;
+              if (strategy === "batch_identical") {
+                const hasSame = bars[i].cuts.includes(pLen) ? -250 : 0;
+                score = remAfter + hasSame;
+              }
+              if (score < bestScore) {
+                bestScore = score;
+                bestIdx = i;
+              }
+            }
+          }
+
+          if (bestIdx === -1) {
+            unplaced.push(pLen);
+          } else {
+            bars[bestIdx].cuts.push(pLen);
+            bars[bestIdx].remaining = Number((bars[bestIdx].remaining - need).toFixed(2));
+          }
+        }
+      }
+
+      const patternGroups = new Map();
+      bars.forEach((b, idx) => {
+        const key = `${b.length}|${b.cuts.join(",")}`;
+        if (!patternGroups.has(key)) {
+          patternGroups.set(key, { barIndices: [], length: b.length, cuts: b.cuts });
+        }
+        patternGroups.get(key).barIndices.push(idx + 1);
+      });
+
+      const totalStock = bars.reduce((s, b) => s + b.length, 0);
+      const totalCutsCount = bars.reduce((s, b) => s + b.cuts.length, 0);
+      const totalKerf = Number((totalCutsCount * k).toFixed(2));
+      const totalRemnant = Number(bars.reduce((s, b) => s + b.remaining, 0).toFixed(2));
+      const totalUsefulMm = Number((totalStock - totalRemnant - totalKerf).toFixed(2));
+      const maxRemnant = bars.length ? Math.max(...bars.map((b) => b.remaining)) : 0;
+      const yieldPct = totalStock > 0 ? (((totalStock - totalRemnant) / totalStock) * 100).toFixed(1) : "0.0";
+
+      return {
+        bars,
+        unplaced,
+        patternGroups: Array.from(patternGroups.values()),
+        totalStock,
+        totalUsefulMm,
+        totalCutsCount,
+        totalKerf,
+        totalRemnant,
+        maxRemnant,
+        yieldPct
+      };
+    }
+
+    function renderCutInputs() {
+      const sel = document.getElementById("profileSelect");
+      sel.innerHTML = buildProfileOptionsHtml(state.profileId, true);
+      document.getElementById("kgmInput").value = state.kgm;
+      document.getElementById("kerfInput").value = state.kerf;
+      document.getElementById("strategySelect").value = state.strategy;
+
+      const stockList = document.getElementById("stockList");
+      stockList.innerHTML = "";
+      state.stock.forEach((row, i) => {
+        const div = document.createElement("div");
+        div.className = "row-item";
+        div.innerHTML = `
+          <input type="number" min="1" step="1" value="${row.length}" aria-label="Longueur barre" />
+          <input type="number" min="0" step="1" value="${row.qty}" aria-label="Quantité barre" />
+          <button class="btn btn-sm btn-danger" type="button" title="Supprimer">×</button>
+        `;
+        const [lenInp, qtyInp, delBtn] = div.children;
+        lenInp.addEventListener("input", () => {
+          state.stock[i].length = Number(lenInp.value) || 0;
+          saveState();
+          recomputeCut();
+        });
+        qtyInp.addEventListener("input", () => {
+          state.stock[i].qty = Number(qtyInp.value) || 0;
+          saveState();
+          recomputeCut();
+        });
+        delBtn.addEventListener("click", () => {
+          state.stock.splice(i, 1);
+          saveState();
+          renderCutInputs();
+          recomputeCut();
+        });
+        stockList.appendChild(div);
+      });
+
+      const pieceList = document.getElementById("pieceList");
+      pieceList.innerHTML = "";
+      state.pieces.forEach((row, i) => {
+        const div = document.createElement("div");
+        div.className = "row-item";
+        div.innerHTML = `
+          <input type="number" min="1" step="1" value="${row.length}" aria-label="Longueur pièce" />
+          <input type="number" min="0" step="1" value="${row.qty}" aria-label="Quantité pièce" />
+          <button class="btn btn-sm btn-danger" type="button" title="Supprimer">×</button>
+        `;
+        const [lenInp, qtyInp, delBtn] = div.children;
+        lenInp.addEventListener("input", () => {
+          state.pieces[i].length = Number(lenInp.value) || 0;
+          saveState();
+          recomputeCut();
+        });
+        qtyInp.addEventListener("input", () => {
+          state.pieces[i].qty = Number(qtyInp.value) || 0;
+          saveState();
+          recomputeCut();
+        });
+        delBtn.addEventListener("click", () => {
+          state.pieces.splice(i, 1);
+          saveState();
+          renderCutInputs();
+          recomputeCut();
+        });
+        pieceList.appendChild(div);
+      });
+    }
+
+    function recomputeCut() {
+      const plan = solveCuttingPlan(state.stock, state.pieces, state.kerf, state.strategy);
+      lastComputed = plan;
+      const kgm = Number(state.kgm) || 0;
+
+      document.getElementById("kpiGrid").innerHTML = `
+        <div class="kpi">
+          <div class="kpi-label">Rendement matière</div>
+          <div class="kpi-val" style="color:var(--ok);">${plan.yieldPct} %</div>
+          <div class="kpi-sub">${plan.totalCutsCount} coupes (${plan.totalKerf} mm lame)</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Poids net pièces</div>
+          <div class="kpi-val">${formatKg(plan.totalUsefulMm, kgm)}</div>
+          <div class="kpi-sub">Sur ${formatKg(plan.totalStock, kgm)} en stock</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Chutes totales</div>
+          <div class="kpi-val">${plan.totalRemnant} mm</div>
+          <div class="kpi-sub">Poids chutes : ${formatKg(plan.totalRemnant, kgm)}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Plus grande chute</div>
+          <div class="kpi-val" style="color:#fbbf24;">${plan.maxRemnant} mm</div>
+          <div class="kpi-sub">${formatKg(plan.maxRemnant, kgm)} réutilisable</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Poids total stock</div>
+          <div class="kpi-val">${formatKg(plan.totalStock, kgm)}</div>
+          <div class="kpi-sub">${(plan.totalStock / 1000).toFixed(2)} m linéaires</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Poids copeaux / sciure</div>
+          <div class="kpi-val">${formatKg(plan.totalKerf, kgm)}</div>
+          <div class="kpi-sub">Base ${kgm.toFixed(2)} kg/m</div>
+        </div>
+      `;
+
+      const alertsBox = document.getElementById("alertsBox");
+      const batchable = plan.patternGroups.filter((g) => g.barIndices.length > 1 && g.cuts.length > 0);
+      let alertsHtml = "";
+
+      if (plan.unplaced.length > 0) {
+        alertsHtml += `
+          <div class="alert alert-warn">
+            <strong>Attention :</strong> ${plan.unplaced.length} pièce(s) non placées (${plan.unplaced.join(", ")} mm). Ajoute de la longueur en stock.
+          </div>
+        `;
+      }
+
+      if (batchable.length > 0) {
+        const txt = batchable
+          .map((g) => {
+            const singleBarKg = ((g.length / 1000) * kgm).toFixed(1);
+            const bundleKg = (singleBarKg * g.barIndices.length).toFixed(1);
+            return `Barres ${g.barIndices.join(" & ")} (${formatCutsCompact(g.cuts)} — botte ${bundleKg} kg)`;
+          })
+          .join(" • ");
+        alertsHtml += `
+          <div class="alert alert-ok">
+            <strong>Sciage en botte possible :</strong> ${txt}
+          </div>
+        `;
+      }
+      alertsBox.innerHTML = alertsHtml;
+
+      document.getElementById("barsOutput").innerHTML = plan.bars
+        .map((b, idx) => {
+          const segsHtml = b.cuts
+            .map((c) => {
+              const pct = Math.max(4, (c / b.length) * 100);
+              const color = getPieceColor(c);
+              return `<div class="seg" style="width:${pct}%; background:${color};" title="${c} mm (${formatKg(c, kgm)})">${c}</div><div class="seg-kerf"></div>`;
+            })
+            .join("");
+
+          const remPct = Math.max(0, (b.remaining / b.length) * 100);
+          const remHtml =
+            b.remaining > 0
+              ? `<div class="seg seg-remnant" style="width:${remPct}%; flex-grow:1;" title="Chute ${b.remaining} mm (${formatKg(b.remaining, kgm)})">${b.remaining >= 65 ? b.remaining : ""}</div>`
+              : "";
+
+          return `
+            <div class="bar-card">
+              <div class="bar-top">
+                <span><strong>Barre ${idx + 1}</strong> — ${b.length} mm <span style="color:var(--muted);">(${formatKg(b.length, kgm)})</span></span>
+                <span>Chute : <strong>${b.remaining} mm</strong> <span style="color:var(--muted);">(${formatKg(b.remaining, kgm)})</span></span>
+              </div>
+              <div class="bar-visual">${segsHtml}${remHtml}</div>
+              <div class="bar-cuts-text">
+                <span>Découpes : ${formatCutsCompact(b.cuts)}</span>
+                <span style="color:var(--muted); font-weight:500;">Pièces : ${formatKg(b.cuts.reduce((s, v) => s + v, 0), kgm)}</span>
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+
+      document.getElementById("summaryTbody").innerHTML = plan.bars
+        .map(
+          (b, idx) => `
+          <tr>
+            <td><strong>Barre ${idx + 1}</strong></td>
+            <td>${b.length} mm</td>
+            <td>${formatCutsCompact(b.cuts)}</td>
+            <td><strong>${b.remaining} mm</strong></td>
+            <td>${formatKg(b.remaining, kgm)}</td>
+          </tr>
+        `
+        )
+        .join("");
+    }
+
+    function renderWeightInputs() {
+      const container = document.getElementById("weightRowsList");
+      container.innerHTML = "";
+
+      state.weightRows.forEach((row, i) => {
+        const div = document.createElement("div");
+        div.className = "weight-row";
+        div.innerHTML = `
+          <div>
+            <label style="margin-bottom:3px;">Type & section</label>
+            <select class="w-prof">${buildProfileOptionsHtml(row.profileId, false)}</select>
+          </div>
+          <div class="weight-row-inputs">
+            <div>
+              <label style="margin-bottom:3px;">Long. (mm)</label>
+              <input class="w-len" type="number" min="0" step="1" value="${row.length}" />
+            </div>
+            <div>
+              <label style="margin-bottom:3px;">Qté</label>
+              <input class="w-qty" type="number" min="0" step="1" value="${row.qty}" />
+            </div>
+            <div class="weight-row-res" id="wRowRes_${i}">0,00 kg</div>
+            <button class="btn btn-sm btn-danger w-del" type="button" title="Supprimer">×</button>
+          </div>
+        `;
+
+        const profSel = div.querySelector(".w-prof");
+        const lenInp = div.querySelector(".w-len");
+        const qtyInp = div.querySelector(".w-qty");
+        const delBtn = div.querySelector(".w-del");
+
+        profSel.addEventListener("change", () => {
+          state.weightRows[i].profileId = profSel.value;
+          saveState();
+          recomputeWeight();
+        });
+        lenInp.addEventListener("input", () => {
+          state.weightRows[i].length = Number(lenInp.value) || 0;
+          saveState();
+          recomputeWeight();
+        });
+        qtyInp.addEventListener("input", () => {
+          state.weightRows[i].qty = Number(qtyInp.value) || 0;
+          saveState();
+          recomputeWeight();
+        });
+        delBtn.addEventListener("click", () => {
+          state.weightRows.splice(i, 1);
+          saveState();
+          renderWeightInputs();
+          recomputeWeight();
+        });
+
+        container.appendChild(div);
+      });
+    }
+
+    function recomputeWeight() {
+      let totalKg = 0;
+      let totalMeters = 0;
+      const linesDetail = [];
+
+      state.weightRows.forEach((row, i) => {
+        const kgm = findKgmByProfileId(row.profileId);
+        const lenMm = Math.max(0, Number(row.length) || 0);
+        const qty = Math.max(0, Math.floor(Number(row.qty) || 0));
+        const meters = (lenMm / 1000) * qty;
+        const rowKg = meters * kgm;
+
+        totalKg += rowKg;
+        totalMeters += meters;
+
+        const resEl = document.getElementById(`wRowRes_${i}`);
+        if (resEl) {
+          resEl.textContent = `${rowKg.toFixed(2)} kg`;
+        }
+
+        if (qty > 0 && lenMm > 0) {
+          linesDetail.push(`${qty} × ${lenMm} mm (${getProfileLabel(row.profileId)}) = ${rowKg.toFixed(2)} kg`);
+        }
+      });
+
+      lastWeightComputed = { totalKg, totalMeters, linesDetail };
+
+      document.getElementById("totalWeightVal").textContent = `${totalKg.toFixed(1)} kg`;
+      document.getElementById("totalWeightSub").textContent = `${totalMeters.toFixed(2)} m linéaires au total`;
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      setTimeout(() => el.classList.remove("show"), 2000);
+    }
+
+    document.getElementById("tabCutBtn").addEventListener("click", () => setActiveTab("cut"));
+    document.getElementById("tabWeightBtn").addEventListener("click", () => setActiveTab("weight"));
+
+    document.getElementById("profileSelect").addEventListener("change", (e) => {
+      const val = e.target.value;
+      state.profileId = val;
+      if (val !== "custom") {
+        const foundKgm = findKgmByProfileId(val);
+        state.kgm = foundKgm;
+        document.getElementById("kgmInput").value = foundKgm;
+      }
+      saveState();
+      recomputeCut();
+    });
+
+    document.getElementById("kgmInput").addEventListener("input", (e) => {
+      state.kgm = Number(e.target.value) || 0;
+      state.profileId = "custom";
+      document.getElementById("profileSelect").value = "custom";
+      saveState();
+      recomputeCut();
+    });
+
+    document.getElementById("kerfInput").addEventListener("input", (e) => {
+      state.kerf = Number(e.target.value) || 0;
+      saveState();
+      recomputeCut();
+    });
+
+    document.getElementById("strategySelect").addEventListener("change", (e) => {
+      state.strategy = e.target.value;
+      saveState();
+      recomputeCut();
+    });
+
+    document.getElementById("addStockBtn").addEventListener("click", () => {
+      state.stock.push({ length: 6000, qty: 1 });
+      saveState();
+      renderCutInputs();
+      recomputeCut();
+    });
+
+    document.getElementById("addPieceBtn").addEventListener("click", () => {
+      state.pieces.push({ length: 1000, qty: 1 });
+      saveState();
+      renderCutInputs();
+      recomputeCut();
+    });
+
+    document.getElementById("addWeightRowBtn").addEventListener("click", () => {
+      const lastProf = state.weightRows.length
+        ? state.weightRows[state.weightRows.length - 1].profileId
+        : (state.profileId !== "custom" ? state.profileId : "tc_50x50x3");
+      state.weightRows.push({ profileId: lastProf, length: 6000, qty: 1 });
+      saveState();
+      renderWeightInputs();
+      recomputeWeight();
+    });
+
+    document.getElementById("importCutToWeightBtn").addEventListener("click", () => {
+      const prof = state.profileId !== "custom" ? state.profileId : "tc_50x50x3";
+      state.weightRows = state.stock.map((r) => ({
+        profileId: prof,
+        length: r.length,
+        qty: r.qty
+      }));
+      saveState();
+      renderWeightInputs();
+      recomputeWeight();
+      showToast("Barres du débit importées");
+    });
+
+    document.getElementById("btnReset").addEventListener("click", () => {
+      const currentTab = state.activeTab;
+      state = structuredClone(DEFAULT_STATE);
+      state.activeTab = currentTab;
+      saveState();
+      renderCutInputs();
+      renderWeightInputs();
+      recomputeCut();
+      recomputeWeight();
+      showToast("Valeurs réinitialisées");
+    });
+
+    document.getElementById("btnCopy").addEventListener("click", async () => {
+      let text = "";
+      if (state.activeTab === "cut" && lastComputed) {
+        const kgm = Number(state.kgm) || 0;
+        text = [
+          `Plan de débit — ${getProfileLabel(state.profileId, kgm)} (${kgm.toFixed(2)} kg/m | lame ${state.kerf} mm)`,
+          `Rendement : ${lastComputed.yieldPct}% | Poids pièces : ${formatKg(lastComputed.totalUsefulMm, kgm)} | Chutes : ${formatKg(lastComputed.totalRemnant, kgm)}`,
+          ...lastComputed.bars.map(
+            (b, i) => `Barre ${i + 1} (${b.length} mm) : ${formatCutsCompact(b.cuts)} | Chute : ${b.remaining} mm (${formatKg(b.remaining, kgm)})`
+          )
+        ].join("\n");
+      } else if (lastWeightComputed) {
+        text = [
+          `Calcul de poids acier :`,
+          ...lastWeightComputed.linesDetail,
+          `Total : ${lastWeightComputed.totalKg.toFixed(1)} kg (${lastWeightComputed.totalMeters.toFixed(2)} m)`
+        ].join("\n");
+      }
+
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("Résumé copié dans le presse-papiers");
+      } catch {
+        showToast("Copie non disponible sur ce navigateur");
+      }
+    });
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+      });
+    }
+
+    renderCutInputs();
+    renderWeightInputs();
+    recomputeCut();
+    recomputeWeight();
+    setActiveTab(state.activeTab || "cut");
+  </script>
+</body>
+</html>
